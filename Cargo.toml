@@ -1,0 +1,38 @@
+[package]
+name = "botlib"
+version = "6.1.0"
+edition = "2021"
+description = "Shared library for General Bots - common types, utilities, and HTTP client"
+license = "AGPL-3.0"
+authors = ["Pragmatismo.com.br", "General Bots Community"]
+repository = "https://github.com/GeneralBots/BotServer"
+
+[features]
+default = []
+full = ["database", "http-client", "validation"]
+database = ["dep:diesel"]
+http-client = ["dep:reqwest"]
+validation = ["dep:validator"]
+
+[dependencies]
+# Core
+anyhow = "1.0"
+thiserror = "2.0"
+log = "0.4"
+chrono = { version = "0.4", features = ["serde"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+uuid = { version = "1.11", features = ["serde", "v4"] }
+toml = "0.8"
+
+# Optional: Database
+diesel = { version = "2.1", features = ["postgres", "uuid", "chrono", "serde_json", "r2d2"], optional = true }
+
+# Optional: HTTP Client
+reqwest = { version = "0.12", features = ["json"], optional = true }
+
+# Optional: Validation
+validator = { version = "0.18", features = ["derive"], optional = true }
+
+[dev-dependencies]
+tokio = { version = "1.41", features = ["rt", "macros"] }

@@ -1,0 +1,348 @@
+//! Version Tracking Module
+//!
+//! Tracks versions of all components and checks for updates.
+
+use chrono::{DateTime, Utc};
+use log::debug;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::sync::RwLock;
+
+/// Global version registry
+static VERSION_REGISTRY: RwLock<Option<VersionRegistry>> = RwLock::new(None);
+
+/// Current botserver version from Cargo.toml
+pub const BOTSERVER_VERSION: &str = env!("CARGO_PKG_VERSION");
+pub const BOTSERVER_NAME: &str = env!("CARGO_PKG_NAME");
+
+/// Component version information
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ComponentVersion {
+    /// Component name
+    pub name: String,
+    /// Current installed version
+    pub version: String,
+    /// Latest available version (if known)
+    pub latest_version: Option<String>,
+    /// Whether an update is available
+    pub update_available: bool,
+    /// Component status
+    pub status: ComponentStatus,
+    /// Last check time
+    pub last_checked: Option<DateTime<Utc>>,
+    /// Source/origin of the component
+    pub source: ComponentSource,
+    /// Additional metadata
+    pub metadata: HashMap<String, String>,
+}
+
+/// Component status
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+pub enum ComponentStatus {
+    Running,
+    Stopped,
+    Error,
+    Updating,
+    NotInstalled,
+    Unknown,
+}
+
+impl std::fmt::Display for ComponentStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ComponentStatus::Running => write!(f, "✅ Running"),
+            ComponentStatus::Stopped => write!(f, "⏹️ Stopped"),
+            ComponentStatus::Error => write!(f, "❌ Error"),
+            ComponentStatus::Updating => write!(f, "🔄 Updating"),
+            ComponentStatus::NotInstalled => write!(f, "⚪ Not Installed"),
+            ComponentStatus::Unknown => write!(f, "❓ Unknown"),
+        }
+    }
+}
+
+/// Component source type
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum ComponentSource {
+    Builtin,
+    Docker,
+    Lxc,
+    System,
+    Binary,
+    External,
+}
+
+impl std::fmt::Display for ComponentSource {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ComponentSource::Builtin => write!(f, "Built-in"),
+            ComponentSource::Docker => write!(f, "Docker"),
+            ComponentSource::Lxc => write!(f, "LXC"),
+            ComponentSource::System => write!(f, "System"),
+            ComponentSource::Binary => write!(f, "Binary"),
+            ComponentSource::External => write!(f, "External"),
+        }
+    }
+}
+
+/// Version registry holding all component versions
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VersionRegistry {
+    pub core_version: String,
+    pub components: HashMap<String, ComponentVersion>,
+    pub last_update_check: Option<DateTime<Utc>>,
+    pub update_url: Option<String>,
+}
+
+impl Default for VersionRegistry {
+    fn default() -> Self {
+        Self {
+            core_version: BOTSERVER_VERSION.to_string(),
+            components: HashMap::new(),
+            last_update_check: None,
+            update_url: Some("https://api.generalbots.com/updates".to_string()),
+        }
+    }
+}
+
+impl VersionRegistry {
+    /// Create a new version registry
+    pub fn new() -> Self {
+        let mut registry = Self::default();
+        registry.register_builtin_components();
+        registry
+    }
+
+    /// Register built-in components
+    fn register_builtin_components(&mut self) {
+        self.register_component(ComponentVersion {
+            name: "botserver".to_string(),
+            version: BOTSERVER_VERSION.to_string(),
+            latest_version: None,
+            update_available: false,
+            status: ComponentStatus::Running,
+            last_checked: Some(Utc::now()),
+            source: ComponentSource::Builtin,
+            metadata: HashMap::from([
+                ("description".to_string(), "Core bot server".to_string()),
+                (
+                    "repo".to_string(),
+                    "https://github.com/GeneralBots/botserver".to_string(),
+                ),
+            ]),
+        });
+
+        self.register_component(ComponentVersion {
+            name: "basic".to_string(),
+            version: BOTSERVER_VERSION.to_string(),
+            latest_version: None,
+            update_available: false,
+            status: ComponentStatus::Running,
+            last_checked: Some(Utc::now()),
+            source: ComponentSource::Builtin,
+            metadata: HashMap::from([(
+                "description".to_string(),
+                "BASIC script interpreter".to_string(),
+            )]),
+        });
+
+        self.register_component(ComponentVersion {
+            name: "llm".to_string(),
+            version: BOTSERVER_VERSION.to_string(),
+            latest_version: None,
+            update_available: false,
+            status: ComponentStatus::Running,
+            last_checked: Some(Utc::now()),
+            source: ComponentSource::Builtin,
+            metadata: HashMap::from([(
+                "description".to_string(),
+                "LLM integration (Claude, GPT, etc.)".to_string(),
+            )]),
+        });
+    }
+
+    /// Register a component
+    pub fn register_component(&mut self, component: ComponentVersion) {
+        debug!(
+            "Registered component: {} v{}",
+            component.name, component.version
+        );
+        self.components.insert(component.name.clone(), component);
+    }
+
+    /// Update component status
+    pub fn update_status(&mut self, name: &str, status: ComponentStatus) {
+        if let Some(component) = self.components.get_mut(name) {
+            component.status = status;
+        }
+    }
+
+    /// Update component version
+    pub fn update_version(&mut self, name: &str, version: String) {
+        if let Some(component) = self.components.get_mut(name) {
+            component.version = version;
+            component.last_checked = Some(Utc::now());
+        }
+    }
+
+    /// Get component by name
+    pub fn get_component(&self, name: &str) -> Option<&ComponentVersion> {
+        self.components.get(name)
+    }
+
+    /// Get all components
+    pub fn get_all_components(&self) -> &HashMap<String, ComponentVersion> {
+        &self.components
+    }
+
+    /// Get components with available updates
+    pub fn get_available_updates(&self) -> Vec<&ComponentVersion> {
+        self.components
+            .values()
+            .filter(|c| c.update_available)
+            .collect()
+    }
+
+    /// Get summary of all components
+    pub fn summary(&self) -> String {
+        let running = self
+            .components
+            .values()
+            .filter(|c| c.status == ComponentStatus::Running)
+            .count();
+        let total = self.components.len();
+        let updates = self.get_available_updates().len();
+
+        format!(
+            "{} v{} | {}/{} components running | {} updates available",
+            BOTSERVER_NAME, self.core_version, running, total, updates
+        )
+    }
+
+    /// Get summary as JSON
+    pub fn to_json(&self) -> Result<String, serde_json::Error> {
+        serde_json::to_string_pretty(self)
+    }
+}
+
+// ============================================================================
+// Global Access Functions
+// ============================================================================
+
+/// Initialize version registry at startup
+pub fn init_version_registry() {
+    let registry = VersionRegistry::new();
+    if let Ok(mut guard) = VERSION_REGISTRY.write() {
+        *guard = Some(registry);
+    }
+}
+
+/// Get version registry (read-only)
+pub fn version_registry() -> Option<VersionRegistry> {
+    VERSION_REGISTRY.read().ok()?.clone()
+}
+
+/// Get mutable version registry
+pub fn version_registry_mut(
+) -> Option<std::sync::RwLockWriteGuard<'static, Option<VersionRegistry>>> {
+    VERSION_REGISTRY.write().ok()
+}
+
+/// Register a component
+pub fn register_component(component: ComponentVersion) {
+    if let Ok(mut guard) = VERSION_REGISTRY.write() {
+        if let Some(ref mut registry) = *guard {
+            registry.register_component(component);
+        }
+    }
+}
+
+/// Update component status
+pub fn update_component_status(name: &str, status: ComponentStatus) {
+    if let Ok(mut guard) = VERSION_REGISTRY.write() {
+        if let Some(ref mut registry) = *guard {
+            registry.update_status(name, status);
+        }
+    }
+}
+
+/// Get component version
+pub fn get_component_version(name: &str) -> Option<ComponentVersion> {
+    VERSION_REGISTRY
+        .read()
+        .ok()?
+        .as_ref()?
+        .get_component(name)
+        .cloned()
+}
+
+/// Get botserver version
+pub fn get_botserver_version() -> &'static str {
+    BOTSERVER_VERSION
+}
+
+/// Get version string for display
+pub fn version_string() -> String {
+    format!("{} v{}", BOTSERVER_NAME, BOTSERVER_VERSION)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_registry_creation() {
+        let registry = VersionRegistry::new();
+        assert!(!registry.core_version.is_empty());
+        assert!(registry.components.contains_key("botserver"));
+    }
+
+    #[test]
+    fn test_component_registration() {
+        let mut registry = VersionRegistry::new();
+        registry.register_component(ComponentVersion {
+            name: "test".to_string(),
+            version: "1.0.0".to_string(),
+            latest_version: None,
+            update_available: false,
+            status: ComponentStatus::Running,
+            last_checked: None,
+            source: ComponentSource::Builtin,
+            metadata: HashMap::new(),
+        });
+        assert!(registry.get_component("test").is_some());
+    }
+
+    #[test]
+    fn test_status_display() {
+        assert_eq!(ComponentStatus::Running.to_string(), "✅ Running");
+        assert_eq!(ComponentStatus::Error.to_string(), "❌ Error");
+    }
+
+    #[test]
+    fn test_version_string() {
+        let vs = version_string();
+        assert!(!vs.is_empty());
+        assert!(vs.contains('v'));
+    }
+
+    #[test]
+    fn test_source_display() {
+        assert_eq!(ComponentSource::Builtin.to_string(), "Built-in");
+        assert_eq!(ComponentSource::Docker.to_string(), "Docker");
+    }
+
+    #[test]
+    fn test_update_status() {
+        let mut registry = VersionRegistry::new();
+        registry.update_status("botserver", ComponentStatus::Stopped);
+        let component = registry.get_component("botserver").unwrap();
+        assert_eq!(component.status, ComponentStatus::Stopped);
+    }
+
+    #[test]
+    fn test_summary() {
+        let registry = VersionRegistry::new();
+        let summary = registry.summary();
+        assert!(summary.contains("components running"));
+    }
+}
