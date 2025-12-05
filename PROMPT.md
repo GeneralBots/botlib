@@ -5,6 +5,32 @@
 
 ---
 
+## Version Management - CRITICAL
+
+**Current version is 6.1.0 - DO NOT CHANGE without explicit approval!**
+
+### Rules
+
+1. **Version is 6.1.0 across ALL workspace crates**
+2. **NEVER change version without explicit user approval**
+3. **All workspace crates share version 6.1.0**
+4. **BotLib does not have migrations - all migrations are in botserver/**
+
+---
+
+## Official Icons - Reference
+
+**BotLib does not contain icons.** Icons are managed in:
+- `botui/ui/suite/assets/icons/` - Runtime UI icons
+- `botbook/src/assets/icons/` - Documentation icons
+
+When documenting or referencing UI elements in BotLib:
+- Reference icons by name (e.g., `gb-chat.svg`, `gb-drive.svg`)
+- Never generate or embed icon content
+- See `botui/PROMPT.md` for the complete icon list
+
+---
+
 ## Project Overview
 
 BotLib is the shared foundation library for the General Bots workspace. It provides common types, utilities, error handling, and optional integrations that are consumed by botserver, botui, and botapp.
@@ -207,6 +233,24 @@ cargo test
 
 ---
 
+## Final Checks Before Commit
+
+```bash
+# Verify version is 6.1.0
+grep "^version" Cargo.toml | grep "6.1.0"
+
+# Build with all features
+cargo build --all-features
+
+# Check for warnings
+cargo check --all-features 2>&1 | grep warning
+
+# Run tests
+cargo test --all-features
+```
+
+---
+
 ## Rules
 
 - Keep botlib minimal and focused
@@ -215,3 +259,4 @@ cargo test
 - Maintain backward compatibility
 - Document all public APIs
 - Target zero warnings
+- **Version**: Always 6.1.0 - do not change without approval

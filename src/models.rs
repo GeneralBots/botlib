@@ -222,6 +222,25 @@ impl BotResponse {
     }
 }
 
+impl Default for BotResponse {
+    fn default() -> Self {
+        Self {
+            bot_id: String::new(),
+            user_id: String::new(),
+            session_id: String::new(),
+            channel: String::new(),
+            content: String::new(),
+            message_type: MessageType::BOT_RESPONSE,
+            stream_token: None,
+            is_complete: true,
+            suggestions: Vec::new(),
+            context_name: None,
+            context_length: 0,
+            context_max_length: 0,
+        }
+    }
+}
+
 /// Attachment for media files in messages
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Attachment {
