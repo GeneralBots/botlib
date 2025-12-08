@@ -19,7 +19,7 @@ impl BotServerClient {
     /// Create new botserver HTTP client
     pub fn new(base_url: Option<String>) -> Self {
         let url = base_url.unwrap_or_else(|| {
-            std::env::var("BOTSERVER_URL").unwrap_or_else(|_| "http://localhost:8081".to_string())
+            std::env::var("BOTSERVER_URL").unwrap_or_else(|_| "http://localhost:8080".to_string())
         });
 
         let client = reqwest::Client::builder()
@@ -37,7 +37,7 @@ impl BotServerClient {
     /// Create with custom timeout
     pub fn with_timeout(base_url: Option<String>, timeout: Duration) -> Self {
         let url = base_url.unwrap_or_else(|| {
-            std::env::var("BOTSERVER_URL").unwrap_or_else(|_| "http://localhost:8081".to_string())
+            std::env::var("BOTSERVER_URL").unwrap_or_else(|_| "http://localhost:8080".to_string())
         });
 
         let client = reqwest::Client::builder()
@@ -216,13 +216,15 @@ mod tests {
     fn test_client_default_url() {
         std::env::remove_var("BOTSERVER_URL");
         let client = BotServerClient::new(None);
-        assert_eq!(client.base_url(), "http://localhost:8081");
+        assert_eq!(client.base_url(), "http://localhost:8080");
     }
 
     #[test]
     fn test_client_with_timeout() {
-        let client =
-            BotServerClient::with_timeout(Some("http://test:9000".to_string()), Duration::from_secs(60));
+        let client = BotServerClient::with_timeout(
+            Some("http://test:9000".to_string()),
+            Duration::from_secs(60),
+        );
         assert_eq!(client.base_url(), "http://test:9000");
     }
 
