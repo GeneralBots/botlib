@@ -50,12 +50,12 @@ pub enum ComponentStatus {
 impl std::fmt::Display for ComponentStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ComponentStatus::Running => write!(f, "✅ Running"),
-            ComponentStatus::Stopped => write!(f, "⏹️ Stopped"),
-            ComponentStatus::Error => write!(f, "❌ Error"),
-            ComponentStatus::Updating => write!(f, "🔄 Updating"),
-            ComponentStatus::NotInstalled => write!(f, "⚪ Not Installed"),
-            ComponentStatus::Unknown => write!(f, "❓ Unknown"),
+            ComponentStatus::Running => write!(f, "[OK] Running"),
+            ComponentStatus::Stopped => write!(f, "[STOP] Stopped"),
+            ComponentStatus::Error => write!(f, "[ERR] Error"),
+            ComponentStatus::Updating => write!(f, "[UPD] Updating"),
+            ComponentStatus::NotInstalled => write!(f, "[--] Not Installed"),
+            ComponentStatus::Unknown => write!(f, "[?] Unknown"),
         }
     }
 }
@@ -314,8 +314,8 @@ mod tests {
 
     #[test]
     fn test_status_display() {
-        assert_eq!(ComponentStatus::Running.to_string(), "✅ Running");
-        assert_eq!(ComponentStatus::Error.to_string(), "❌ Error");
+        assert_eq!(ComponentStatus::Running.to_string(), "[OK] Running");
+        assert_eq!(ComponentStatus::Error.to_string(), "[ERR] Error");
     }
 
     #[test]
