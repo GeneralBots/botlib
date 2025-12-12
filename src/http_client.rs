@@ -19,12 +19,13 @@ impl BotServerClient {
     /// Create new botserver HTTP client
     pub fn new(base_url: Option<String>) -> Self {
         let url = base_url.unwrap_or_else(|| {
-            std::env::var("BOTSERVER_URL").unwrap_or_else(|_| "http://localhost:8080".to_string())
+            std::env::var("BOTSERVER_URL").unwrap_or_else(|_| "https://localhost:8088".to_string())
         });
 
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(30))
             .user_agent(format!("BotLib/{}", env!("CARGO_PKG_VERSION")))
+            .danger_accept_invalid_certs(true) // Accept self-signed certs for local dev
             .build()
             .expect("Failed to create HTTP client");
 
