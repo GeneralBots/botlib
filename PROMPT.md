@@ -31,6 +31,44 @@ When documenting or referencing UI elements in BotLib:
 
 ---
 
+## Weekly Maintenance - EVERY MONDAY
+
+### Package Review Checklist
+
+**Every Monday, review the following:**
+
+1. **Dependency Updates**
+   ```bash
+   cargo outdated
+   cargo audit
+   ```
+
+2. **Package Consolidation Opportunities**
+   - Check if new crates can replace custom code
+   - Look for crates that combine multiple dependencies
+   - Review `Cargo.toml` for redundant dependencies
+
+3. **Code Reduction Candidates**
+   - Custom implementations that now have crate equivalents
+   - Boilerplate that can be replaced with derive macros
+   - Re-exports that can simplify downstream usage
+
+4. **Feature Flag Review**
+   - Check if optional features are still needed
+   - Consolidate similar features
+   - Remove unused feature gates
+
+### Packages to Watch
+
+| Area | Potential Packages | Purpose |
+|------|-------------------|---------|
+| Error Handling | `anyhow`, `thiserror` | Consolidate error types |
+| Validation | `validator` | Replace manual validation |
+| Serialization | `serde` derives | Reduce boilerplate |
+| UUID | `uuid` | Consistent ID generation |
+
+---
+
 ## Project Overview
 
 BotLib is the shared foundation library for the General Bots workspace. It provides common types, utilities, error handling, and optional integrations that are consumed by botserver, botui, and botapp.
