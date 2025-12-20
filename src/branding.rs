@@ -252,9 +252,7 @@ impl From<ProductFile> for BrandingConfig {
     }
 }
 
-// ============================================================================
 // Global Access Functions
-// ============================================================================
 
 /// Initialize branding at application startup
 pub fn init_branding() {

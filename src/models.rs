@@ -1,13 +1,8 @@
-//! Common models shared across bot ecosystem
-//!
-//! Contains DTOs, API response types, and common structures.
-
 use crate::message_types::MessageType;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-/// Standard API response wrapper
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ApiResponse<T> {
     pub success: bool,
@@ -17,37 +12,67 @@ pub struct ApiResponse<T> {
     pub error: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub message: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub code: Option<String>,
 }
 
 impl<T> ApiResponse<T> {
-    /// Create a success response with data
     pub fn success(data: T) -> Self {
         Self {
             success: true,
             data: Some(data),
             error: None,
             message: None,
+            code: None,
         }
     }
 
-    /// Create a success response with message
-    pub fn success_message(data: T, message: impl Into<String>) -> Self {
+    pub fn success_with_message(data: T, message: impl Into<String>) -> Self {
         Self {
             success: true,
             data: Some(data),
             error: None,
             message: Some(message.into()),
+            code: None,
         }
     }
 
-    /// Create an error response
     pub fn error(message: impl Into<String>) -> Self {
         Self {
             success: false,
             data: None,
             error: Some(message.into()),
             message: None,
+            code: None,
         }
+    }
+
+    pub fn error_with_code(message: impl Into<String>, code: impl Into<String>) -> Self {
+        Self {
+            success: false,
+            data: None,
+            error: Some(message.into()),
+            message: None,
+            code: Some(code.into()),
+        }
+    }
+
+    pub fn map<U, F: FnOnce(T) -> U>(self, f: F) -> ApiResponse<U> {
+        ApiResponse {
+            success: self.success,
+            data: self.data.map(f),
+            error: self.error,
+            message: self.message,
+            code: self.code,
+        }
+    }
+
+    pub fn is_success(&self) -> bool {
+        self.success
+    }
+
+    pub fn is_error(&self) -> bool {
+        !self.success
     }
 }
 
@@ -57,7 +82,6 @@ impl<T: Default> Default for ApiResponse<T> {
     }
 }
 
-/// User session information
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Session {
     pub id: Uuid,
@@ -71,17 +95,37 @@ pub struct Session {
 }
 
 impl Session {
-    /// Check if session is expired
-    pub fn is_expired(&self) -> bool {
-        if let Some(expires) = self.expires_at {
-            Utc::now() > expires
-        } else {
-            false
+    pub fn new(user_id: Uuid, bot_id: Uuid, title: impl Into<String>) -> Self {
+        let now = Utc::now();
+        Self {
+            id: Uuid::new_v4(),
+            user_id,
+            bot_id,
+            title: title.into(),
+            created_at: now,
+            updated_at: now,
+            expires_at: None,
         }
+    }
+
+    pub fn with_expiry(mut self, expires_at: DateTime<Utc>) -> Self {
+        self.expires_at = Some(expires_at);
+        self
+    }
+
+    pub fn is_expired(&self) -> bool {
+        self.expires_at.map(|exp| Utc::now() > exp).unwrap_or(false)
+    }
+
+    pub fn is_active(&self) -> bool {
+        !self.is_expired()
+    }
+
+    pub fn remaining_time(&self) -> Option<chrono::Duration> {
+        self.expires_at.map(|exp| exp - Utc::now())
     }
 }
 
-/// User message sent to bot
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserMessage {
     pub bot_id: String,
@@ -98,7 +142,6 @@ pub struct UserMessage {
 }
 
 impl UserMessage {
-    /// Create a new text message
     pub fn text(
         bot_id: impl Into<String>,
         user_id: impl Into<String>,
@@ -118,14 +161,31 @@ impl UserMessage {
             context_name: None,
         }
     }
+
+    pub fn with_media(mut self, url: impl Into<String>) -> Self {
+        self.media_url = Some(url.into());
+        self
+    }
+
+    pub fn with_context(mut self, context: impl Into<String>) -> Self {
+        self.context_name = Some(context.into());
+        self
+    }
+
+    pub fn has_media(&self) -> bool {
+        self.media_url.is_some()
+    }
 }
 
-/// Suggestion for user
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Suggestion {
     pub text: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub context: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub action: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub icon: Option<String>,
 }
 
 impl Suggestion {
@@ -133,18 +193,33 @@ impl Suggestion {
         Self {
             text: text.into(),
             context: None,
+            action: None,
+            icon: None,
         }
     }
 
-    pub fn with_context(text: impl Into<String>, context: impl Into<String>) -> Self {
-        Self {
-            text: text.into(),
-            context: Some(context.into()),
-        }
+    pub fn with_context(mut self, context: impl Into<String>) -> Self {
+        self.context = Some(context.into());
+        self
+    }
+
+    pub fn with_action(mut self, action: impl Into<String>) -> Self {
+        self.action = Some(action.into());
+        self
+    }
+
+    pub fn with_icon(mut self, icon: impl Into<String>) -> Self {
+        self.icon = Some(icon.into());
+        self
     }
 }
 
-/// Bot response to user
+impl<S: Into<String>> From<S> for Suggestion {
+    fn from(text: S) -> Self {
+        Self::new(text)
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BotResponse {
     pub bot_id: String,
@@ -156,7 +231,7 @@ pub struct BotResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stream_token: Option<String>,
     pub is_complete: bool,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub suggestions: Vec<Suggestion>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub context_name: Option<String>,
@@ -167,7 +242,6 @@ pub struct BotResponse {
 }
 
 impl BotResponse {
-    /// Create a new bot response
     pub fn new(
         bot_id: impl Into<String>,
         session_id: impl Into<String>,
@@ -191,7 +265,6 @@ impl BotResponse {
         }
     }
 
-    /// Create a streaming response
     pub fn streaming(
         bot_id: impl Into<String>,
         session_id: impl Into<String>,
@@ -215,10 +288,47 @@ impl BotResponse {
         }
     }
 
-    /// Add suggestions to response
-    pub fn with_suggestions(mut self, suggestions: Vec<Suggestion>) -> Self {
-        self.suggestions = suggestions;
+    pub fn with_suggestions<I, S>(mut self, suggestions: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<Suggestion>,
+    {
+        self.suggestions = suggestions.into_iter().map(Into::into).collect();
         self
+    }
+
+    pub fn add_suggestion(mut self, suggestion: impl Into<Suggestion>) -> Self {
+        self.suggestions.push(suggestion.into());
+        self
+    }
+
+    pub fn with_context(
+        mut self,
+        name: impl Into<String>,
+        length: usize,
+        max_length: usize,
+    ) -> Self {
+        self.context_name = Some(name.into());
+        self.context_length = length;
+        self.context_max_length = max_length;
+        self
+    }
+
+    pub fn append_content(&mut self, chunk: &str) {
+        self.content.push_str(chunk);
+    }
+
+    pub fn complete(mut self) -> Self {
+        self.is_complete = true;
+        self
+    }
+
+    pub fn is_streaming(&self) -> bool {
+        self.stream_token.is_some() && !self.is_complete
+    }
+
+    pub fn has_suggestions(&self) -> bool {
+        !self.suggestions.is_empty()
     }
 }
 
@@ -241,22 +351,92 @@ impl Default for BotResponse {
     }
 }
 
-/// Attachment for media files in messages
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Attachment {
-    /// Type of attachment (image, audio, video, file, etc.)
-    pub attachment_type: String,
-    /// URL or path to the attachment
+    pub attachment_type: AttachmentType,
     pub url: String,
-    /// MIME type of the attachment
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mime_type: Option<String>,
-    /// File name if available
     #[serde(skip_serializing_if = "Option::is_none")]
     pub filename: Option<String>,
-    /// File size in bytes
     #[serde(skip_serializing_if = "Option::is_none")]
     pub size: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub thumbnail_url: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum AttachmentType {
+    Image,
+    Audio,
+    Video,
+    Document,
+    File,
+}
+
+impl Attachment {
+    pub fn new(attachment_type: AttachmentType, url: impl Into<String>) -> Self {
+        Self {
+            attachment_type,
+            url: url.into(),
+            mime_type: None,
+            filename: None,
+            size: None,
+            thumbnail_url: None,
+        }
+    }
+
+    pub fn image(url: impl Into<String>) -> Self {
+        Self::new(AttachmentType::Image, url)
+    }
+
+    pub fn audio(url: impl Into<String>) -> Self {
+        Self::new(AttachmentType::Audio, url)
+    }
+
+    pub fn video(url: impl Into<String>) -> Self {
+        Self::new(AttachmentType::Video, url)
+    }
+
+    pub fn document(url: impl Into<String>) -> Self {
+        Self::new(AttachmentType::Document, url)
+    }
+
+    pub fn file(url: impl Into<String>) -> Self {
+        Self::new(AttachmentType::File, url)
+    }
+
+    pub fn with_mime_type(mut self, mime_type: impl Into<String>) -> Self {
+        self.mime_type = Some(mime_type.into());
+        self
+    }
+
+    pub fn with_filename(mut self, filename: impl Into<String>) -> Self {
+        self.filename = Some(filename.into());
+        self
+    }
+
+    pub fn with_size(mut self, size: u64) -> Self {
+        self.size = Some(size);
+        self
+    }
+
+    pub fn with_thumbnail(mut self, thumbnail_url: impl Into<String>) -> Self {
+        self.thumbnail_url = Some(thumbnail_url.into());
+        self
+    }
+
+    pub fn is_image(&self) -> bool {
+        self.attachment_type == AttachmentType::Image
+    }
+
+    pub fn is_media(&self) -> bool {
+        matches!(
+            self.attachment_type,
+            AttachmentType::Image | AttachmentType::Audio | AttachmentType::Video
+        )
+    }
 }
 
 #[cfg(test)]
@@ -266,7 +446,8 @@ mod tests {
     #[test]
     fn test_api_response_success() {
         let response: ApiResponse<String> = ApiResponse::success("test".to_string());
-        assert!(response.success);
+        assert!(response.is_success());
+        assert!(!response.is_error());
         assert_eq!(response.data, Some("test".to_string()));
         assert!(response.error.is_none());
     }
@@ -274,22 +455,86 @@ mod tests {
     #[test]
     fn test_api_response_error() {
         let response: ApiResponse<String> = ApiResponse::error("something went wrong");
-        assert!(!response.success);
+        assert!(!response.is_success());
+        assert!(response.is_error());
         assert!(response.data.is_none());
         assert_eq!(response.error, Some("something went wrong".to_string()));
     }
 
     #[test]
+    fn test_api_response_map() {
+        let response: ApiResponse<i32> = ApiResponse::success(42);
+        let mapped = response.map(|n| n.to_string());
+        assert_eq!(mapped.data, Some("42".to_string()));
+    }
+
+    #[test]
+    fn test_session_creation() {
+        let user_id = Uuid::new_v4();
+        let bot_id = Uuid::new_v4();
+        let session = Session::new(user_id, bot_id, "Test Session");
+
+        assert_eq!(session.user_id, user_id);
+        assert_eq!(session.bot_id, bot_id);
+        assert_eq!(session.title, "Test Session");
+        assert!(session.is_active());
+        assert!(!session.is_expired());
+    }
+
+    #[test]
     fn test_user_message_creation() {
-        let msg = UserMessage::text("bot1", "user1", "sess1", "web", "Hello!");
+        let msg =
+            UserMessage::text("bot1", "user1", "sess1", "web", "Hello!").with_context("greeting");
+
         assert_eq!(msg.content, "Hello!");
         assert_eq!(msg.message_type, MessageType::USER);
+        assert_eq!(msg.context_name, Some("greeting".to_string()));
     }
 
     #[test]
     fn test_bot_response_creation() {
-        let response = BotResponse::new("bot1", "sess1", "user1", "Hi there!", "web");
+        let response = BotResponse::new("bot1", "sess1", "user1", "Hi there!", "web")
+            .add_suggestion("Option 1")
+            .add_suggestion("Option 2");
+
         assert!(response.is_complete);
-        assert_eq!(response.message_type, MessageType::BOT_RESPONSE);
+        assert!(!response.is_streaming());
+        assert!(response.has_suggestions());
+        assert_eq!(response.suggestions.len(), 2);
+    }
+
+    #[test]
+    fn test_bot_response_streaming() {
+        let mut response = BotResponse::streaming("bot1", "sess1", "user1", "web", "token123");
+        assert!(response.is_streaming());
+        assert!(!response.is_complete);
+
+        response.append_content("Hello ");
+        response.append_content("World!");
+        assert_eq!(response.content, "Hello World!");
+
+        let response = response.complete();
+        assert!(!response.is_streaming());
+        assert!(response.is_complete);
+    }
+
+    #[test]
+    fn test_attachment_creation() {
+        let attachment = Attachment::image("https://example.com/photo.jpg")
+            .with_filename("photo.jpg")
+            .with_size(1024)
+            .with_mime_type("image/jpeg");
+
+        assert!(attachment.is_image());
+        assert!(attachment.is_media());
+        assert_eq!(attachment.filename, Some("photo.jpg".to_string()));
+        assert_eq!(attachment.size, Some(1024));
+    }
+
+    #[test]
+    fn test_suggestion_from_string() {
+        let suggestion: Suggestion = "Click here".into();
+        assert_eq!(suggestion.text, "Click here");
+        assert!(suggestion.context.is_none());
     }
 }

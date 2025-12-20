@@ -224,9 +224,7 @@ impl VersionRegistry {
     }
 }
 
-// ============================================================================
 // Global Access Functions
-// ============================================================================
 
 /// Initialize version registry at startup
 pub fn init_version_registry() {

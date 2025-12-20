@@ -1,90 +1,143 @@
-//! Common error types for BotLib
-//!
-//! Provides unified error handling across botserver and botui.
-
 use thiserror::Error;
 
-/// Result type alias using BotError
 pub type BotResult<T> = Result<T, BotError>;
 
-/// Common error types across the bot ecosystem
 #[derive(Error, Debug)]
 pub enum BotError {
-    /// Configuration errors
     #[error("Configuration error: {0}")]
     Config(String),
 
-    /// Database errors
     #[error("Database error: {0}")]
     Database(String),
 
-    /// HTTP/Network errors
-    #[error("HTTP error: {0}")]
-    Http(String),
+    #[error("HTTP error: {status} - {message}")]
+    Http { status: u16, message: String },
 
-    /// Authentication/Authorization errors
     #[error("Auth error: {0}")]
     Auth(String),
 
-    /// Validation errors
     #[error("Validation error: {0}")]
     Validation(String),
 
-    /// Not found errors
-    #[error("{0} not found")]
-    NotFound(String),
+    #[error("{entity} not found")]
+    NotFound { entity: String },
 
-    /// Internal errors
+    #[error("Conflict: {0}")]
+    Conflict(String),
+
+    #[error("Rate limited: retry after {retry_after_secs}s")]
+    RateLimited { retry_after_secs: u64 },
+
+    #[error("Service unavailable: {0}")]
+    ServiceUnavailable(String),
+
+    #[error("Timeout after {duration_ms}ms")]
+    Timeout { duration_ms: u64 },
+
     #[error("Internal error: {0}")]
     Internal(String),
 
-    /// IO errors
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
 
-    /// JSON serialization errors
     #[error("JSON error: {0}")]
     Json(#[from] serde_json::Error),
 
-    /// Generic error wrapper
     #[error("{0}")]
     Other(String),
 }
 
 impl BotError {
-    /// Create a config error
     pub fn config(msg: impl Into<String>) -> Self {
         Self::Config(msg.into())
     }
 
-    /// Create a database error
     pub fn database(msg: impl Into<String>) -> Self {
         Self::Database(msg.into())
     }
 
-    /// Create an HTTP error
-    pub fn http(msg: impl Into<String>) -> Self {
-        Self::Http(msg.into())
+    pub fn http(status: u16, msg: impl Into<String>) -> Self {
+        Self::Http {
+            status,
+            message: msg.into(),
+        }
     }
 
-    /// Create an auth error
+    pub fn http_msg(msg: impl Into<String>) -> Self {
+        Self::Http {
+            status: 500,
+            message: msg.into(),
+        }
+    }
+
     pub fn auth(msg: impl Into<String>) -> Self {
         Self::Auth(msg.into())
     }
 
-    /// Create a validation error
     pub fn validation(msg: impl Into<String>) -> Self {
         Self::Validation(msg.into())
     }
 
-    /// Create a not found error
     pub fn not_found(entity: impl Into<String>) -> Self {
-        Self::NotFound(entity.into())
+        Self::NotFound {
+            entity: entity.into(),
+        }
     }
 
-    /// Create an internal error
+    pub fn conflict(msg: impl Into<String>) -> Self {
+        Self::Conflict(msg.into())
+    }
+
+    pub fn rate_limited(retry_after_secs: u64) -> Self {
+        Self::RateLimited { retry_after_secs }
+    }
+
+    pub fn service_unavailable(msg: impl Into<String>) -> Self {
+        Self::ServiceUnavailable(msg.into())
+    }
+
+    pub fn timeout(duration_ms: u64) -> Self {
+        Self::Timeout { duration_ms }
+    }
+
     pub fn internal(msg: impl Into<String>) -> Self {
         Self::Internal(msg.into())
+    }
+
+    pub fn status_code(&self) -> u16 {
+        match self {
+            Self::Config(_) => 500,
+            Self::Database(_) => 500,
+            Self::Http { status, .. } => *status,
+            Self::Auth(_) => 401,
+            Self::Validation(_) => 400,
+            Self::NotFound { .. } => 404,
+            Self::Conflict(_) => 409,
+            Self::RateLimited { .. } => 429,
+            Self::ServiceUnavailable(_) => 503,
+            Self::Timeout { .. } => 504,
+            Self::Internal(_) => 500,
+            Self::Io(_) => 500,
+            Self::Json(_) => 400,
+            Self::Other(_) => 500,
+        }
+    }
+
+    pub fn is_retryable(&self) -> bool {
+        match self {
+            Self::RateLimited { .. } | Self::ServiceUnavailable(_) | Self::Timeout { .. } => true,
+            Self::Http { status, .. } => *status >= 500,
+            _ => false,
+        }
+    }
+
+    pub fn is_client_error(&self) -> bool {
+        let code = self.status_code();
+        (400..500).contains(&code)
+    }
+
+    pub fn is_server_error(&self) -> bool {
+        self.status_code() >= 500
     }
 }
 
@@ -109,7 +162,11 @@ impl From<&str> for BotError {
 #[cfg(feature = "http-client")]
 impl From<reqwest::Error> for BotError {
     fn from(err: reqwest::Error) -> Self {
-        Self::Http(err.to_string())
+        let status = err.status().map(|s| s.as_u16()).unwrap_or(500);
+        Self::Http {
+            status,
+            message: err.to_string(),
+        }
     }
 }
 
@@ -127,5 +184,44 @@ mod tests {
     fn test_not_found_error() {
         let err = BotError::not_found("User");
         assert_eq!(err.to_string(), "User not found");
+        assert_eq!(err.status_code(), 404);
+    }
+
+    #[test]
+    fn test_http_error_with_status() {
+        let err = BotError::http(503, "Service down");
+        assert_eq!(err.status_code(), 503);
+        assert!(err.is_server_error());
+        assert!(!err.is_client_error());
+    }
+
+    #[test]
+    fn test_validation_error() {
+        let err = BotError::validation("Invalid email format");
+        assert_eq!(err.status_code(), 400);
+        assert!(err.is_client_error());
+    }
+
+    #[test]
+    fn test_retryable_errors() {
+        assert!(BotError::rate_limited(60).is_retryable());
+        assert!(BotError::service_unavailable("down").is_retryable());
+        assert!(BotError::timeout(5000).is_retryable());
+        assert!(!BotError::validation("bad input").is_retryable());
+        assert!(!BotError::not_found("User").is_retryable());
+    }
+
+    #[test]
+    fn test_rate_limited_display() {
+        let err = BotError::rate_limited(30);
+        assert_eq!(err.to_string(), "Rate limited: retry after 30s");
+        assert_eq!(err.status_code(), 429);
+    }
+
+    #[test]
+    fn test_timeout_display() {
+        let err = BotError::timeout(5000);
+        assert_eq!(err.to_string(), "Timeout after 5000ms");
+        assert_eq!(err.status_code(), 504);
     }
 }
