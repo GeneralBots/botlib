@@ -88,7 +88,8 @@ impl BotError {
         Self::Conflict(msg.into())
     }
 
-    pub fn rate_limited(retry_after_secs: u64) -> Self {
+    #[must_use]
+    pub const fn rate_limited(retry_after_secs: u64) -> Self {
         Self::RateLimited { retry_after_secs }
     }
 
@@ -96,7 +97,8 @@ impl BotError {
         Self::ServiceUnavailable(msg.into())
     }
 
-    pub fn timeout(duration_ms: u64) -> Self {
+    #[must_use]
+    pub const fn timeout(duration_ms: u64) -> Self {
         Self::Timeout { duration_ms }
     }
 
@@ -104,26 +106,27 @@ impl BotError {
         Self::Internal(msg.into())
     }
 
-    pub fn status_code(&self) -> u16 {
+    #[must_use]
+    pub const fn status_code(&self) -> u16 {
         match self {
-            Self::Config(_) => 500,
-            Self::Database(_) => 500,
             Self::Http { status, .. } => *status,
             Self::Auth(_) => 401,
-            Self::Validation(_) => 400,
+            Self::Validation(_) | Self::Json(_) => 400,
             Self::NotFound { .. } => 404,
             Self::Conflict(_) => 409,
             Self::RateLimited { .. } => 429,
             Self::ServiceUnavailable(_) => 503,
             Self::Timeout { .. } => 504,
-            Self::Internal(_) => 500,
-            Self::Io(_) => 500,
-            Self::Json(_) => 400,
-            Self::Other(_) => 500,
+            Self::Config(_)
+            | Self::Database(_)
+            | Self::Internal(_)
+            | Self::Io(_)
+            | Self::Other(_) => 500,
         }
     }
 
-    pub fn is_retryable(&self) -> bool {
+    #[must_use]
+    pub const fn is_retryable(&self) -> bool {
         match self {
             Self::RateLimited { .. } | Self::ServiceUnavailable(_) | Self::Timeout { .. } => true,
             Self::Http { status, .. } => *status >= 500,
@@ -131,12 +134,14 @@ impl BotError {
         }
     }
 
-    pub fn is_client_error(&self) -> bool {
+    #[must_use]
+    pub const fn is_client_error(&self) -> bool {
         let code = self.status_code();
-        (400..500).contains(&code)
+        code >= 400 && code < 500
     }
 
-    pub fn is_server_error(&self) -> bool {
+    #[must_use]
+    pub const fn is_server_error(&self) -> bool {
         self.status_code() >= 500
     }
 }
@@ -162,7 +167,7 @@ impl From<&str> for BotError {
 #[cfg(feature = "http-client")]
 impl From<reqwest::Error> for BotError {
     fn from(err: reqwest::Error) -> Self {
-        let status = err.status().map(|s| s.as_u16()).unwrap_or(500);
+        let status = err.status().map_or(500, |s| s.as_u16());
         Self::Http {
             status,
             message: err.to_string(),

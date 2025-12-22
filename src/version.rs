@@ -50,12 +50,12 @@ pub enum ComponentStatus {
 impl std::fmt::Display for ComponentStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ComponentStatus::Running => write!(f, "[OK] Running"),
-            ComponentStatus::Stopped => write!(f, "[STOP] Stopped"),
-            ComponentStatus::Error => write!(f, "[ERR] Error"),
-            ComponentStatus::Updating => write!(f, "[UPD] Updating"),
-            ComponentStatus::NotInstalled => write!(f, "[--] Not Installed"),
-            ComponentStatus::Unknown => write!(f, "[?] Unknown"),
+            Self::Running => write!(f, "[OK] Running"),
+            Self::Stopped => write!(f, "[STOP] Stopped"),
+            Self::Error => write!(f, "[ERR] Error"),
+            Self::Updating => write!(f, "[UPD] Updating"),
+            Self::NotInstalled => write!(f, "[--] Not Installed"),
+            Self::Unknown => write!(f, "[?] Unknown"),
         }
     }
 }
@@ -74,12 +74,12 @@ pub enum ComponentSource {
 impl std::fmt::Display for ComponentSource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ComponentSource::Builtin => write!(f, "Built-in"),
-            ComponentSource::Docker => write!(f, "Docker"),
-            ComponentSource::Lxc => write!(f, "LXC"),
-            ComponentSource::System => write!(f, "System"),
-            ComponentSource::Binary => write!(f, "Binary"),
-            ComponentSource::External => write!(f, "External"),
+            Self::Builtin => write!(f, "Built-in"),
+            Self::Docker => write!(f, "Docker"),
+            Self::Lxc => write!(f, "LXC"),
+            Self::System => write!(f, "System"),
+            Self::Binary => write!(f, "Binary"),
+            Self::External => write!(f, "External"),
         }
     }
 }
@@ -106,6 +106,7 @@ impl Default for VersionRegistry {
 
 impl VersionRegistry {
     /// Create a new version registry
+    #[must_use]
     pub fn new() -> Self {
         let mut registry = Self::default();
         registry.register_builtin_components();
@@ -185,16 +186,19 @@ impl VersionRegistry {
     }
 
     /// Get component by name
+    #[must_use]
     pub fn get_component(&self, name: &str) -> Option<&ComponentVersion> {
         self.components.get(name)
     }
 
     /// Get all components
-    pub fn get_all_components(&self) -> &HashMap<String, ComponentVersion> {
+    #[must_use]
+    pub const fn get_all_components(&self) -> &HashMap<String, ComponentVersion> {
         &self.components
     }
 
     /// Get components with available updates
+    #[must_use]
     pub fn get_available_updates(&self) -> Vec<&ComponentVersion> {
         self.components
             .values()
@@ -203,6 +207,7 @@ impl VersionRegistry {
     }
 
     /// Get summary of all components
+    #[must_use]
     pub fn summary(&self) -> String {
         let running = self
             .components
@@ -213,12 +218,16 @@ impl VersionRegistry {
         let updates = self.get_available_updates().len();
 
         format!(
-            "{} v{} | {}/{} components running | {} updates available",
-            BOTSERVER_NAME, self.core_version, running, total, updates
+            "{BOTSERVER_NAME} v{} | {running}/{total} components running | {updates} updates available",
+            self.core_version
         )
     }
 
     /// Get summary as JSON
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if JSON serialization fails.
     pub fn to_json(&self) -> Result<String, serde_json::Error> {
         serde_json::to_string_pretty(self)
     }
@@ -235,6 +244,7 @@ pub fn init_version_registry() {
 }
 
 /// Get version registry (read-only)
+#[must_use]
 pub fn version_registry() -> Option<VersionRegistry> {
     VERSION_REGISTRY.read().ok()?.clone()
 }
@@ -264,6 +274,7 @@ pub fn update_component_status(name: &str, status: ComponentStatus) {
 }
 
 /// Get component version
+#[must_use]
 pub fn get_component_version(name: &str) -> Option<ComponentVersion> {
     VERSION_REGISTRY
         .read()
@@ -274,13 +285,15 @@ pub fn get_component_version(name: &str) -> Option<ComponentVersion> {
 }
 
 /// Get botserver version
-pub fn get_botserver_version() -> &'static str {
+#[must_use]
+pub const fn get_botserver_version() -> &'static str {
     BOTSERVER_VERSION
 }
 
 /// Get version string for display
+#[must_use]
 pub fn version_string() -> String {
-    format!("{} v{}", BOTSERVER_NAME, BOTSERVER_VERSION)
+    format!("{BOTSERVER_NAME} v{BOTSERVER_VERSION}")
 }
 
 #[cfg(test)]
@@ -333,8 +346,12 @@ mod tests {
     fn test_update_status() {
         let mut registry = VersionRegistry::new();
         registry.update_status("botserver", ComponentStatus::Stopped);
-        let component = registry.get_component("botserver").unwrap();
-        assert_eq!(component.status, ComponentStatus::Stopped);
+        let component = registry.get_component("botserver");
+        assert!(
+            component.is_some(),
+            "botserver component should exist in registry"
+        );
+        assert_eq!(component.map(|c| c.status), Some(ComponentStatus::Stopped));
     }
 
     #[test]

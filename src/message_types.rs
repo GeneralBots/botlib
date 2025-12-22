@@ -10,28 +10,28 @@ use serde::{Deserialize, Serialize};
 pub struct MessageType(pub i32);
 
 impl MessageType {
-    /// Regular message from external systems (WhatsApp, Instagram, etc.)
-    pub const EXTERNAL: MessageType = MessageType(0);
+    /// Regular message from external systems (`WhatsApp`, Instagram, etc.)
+    pub const EXTERNAL: Self = Self(0);
 
     /// User message from web interface
-    pub const USER: MessageType = MessageType(1);
+    pub const USER: Self = Self(1);
 
     /// Bot response (can be regular content or event)
-    pub const BOT_RESPONSE: MessageType = MessageType(2);
+    pub const BOT_RESPONSE: Self = Self(2);
 
     /// Continue interrupted response
-    pub const CONTINUE: MessageType = MessageType(3);
+    pub const CONTINUE: Self = Self(3);
 
     /// Suggestion or command message
-    pub const SUGGESTION: MessageType = MessageType(4);
+    pub const SUGGESTION: Self = Self(4);
 
     /// Context change notification
-    pub const CONTEXT_CHANGE: MessageType = MessageType(5);
+    pub const CONTEXT_CHANGE: Self = Self(5);
 }
 
 impl From<i32> for MessageType {
     fn from(value: i32) -> Self {
-        MessageType(value)
+        Self(value)
     }
 }
 
@@ -43,7 +43,7 @@ impl From<MessageType> for i32 {
 
 impl Default for MessageType {
     fn default() -> Self {
-        MessageType::USER
+        Self::USER
     }
 }
 
@@ -58,7 +58,7 @@ impl std::fmt::Display for MessageType {
             5 => "CONTEXT_CHANGE",
             _ => "UNKNOWN",
         };
-        write!(f, "{}", name)
+        write!(f, "{name}")
     }
 }
 

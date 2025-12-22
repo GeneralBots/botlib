@@ -6,6 +6,8 @@ description = "Shared library for General Bots - common types, utilities, and HT
 license = "AGPL-3.0"
 authors = ["Pragmatismo.com.br", "General Bots Community"]
 repository = "https://github.com/GeneralBots/BotServer"
+keywords = ["bot", "chatbot", "ai", "conversational", "library"]
+categories = ["api-bindings", "web-programming"]
 
 [features]
 default = []
@@ -36,3 +38,24 @@ validator = { version = "0.18", features = ["derive"], optional = true }
 
 [dev-dependencies]
 tokio = { version = "1.41", features = ["rt", "macros"] }
+
+[lints.rust]
+unused_imports = "warn"
+unused_variables = "warn"
+unused_mut = "warn"
+unsafe_code = "deny"
+missing_debug_implementations = "warn"
+
+[lints.clippy]
+all = "warn"
+pedantic = "warn"
+nursery = "warn"
+cargo = "warn"
+unwrap_used = "warn"
+expect_used = "warn"
+panic = "warn"
+todo = "warn"
+# Disabled: has false positives for functions with mut self, heap types (Vec, String)
+missing_const_for_fn = "allow"
+# Disabled: transitive dependencies we cannot control
+multiple_crate_versions = "allow"

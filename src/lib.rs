@@ -1,4 +1,4 @@
-//! BotLib - Shared library for General Bots
+//! `BotLib` - Shared library for General Bots
 //!
 //! This crate provides common types, utilities, and abstractions
 //! shared between botserver and botui.
@@ -17,7 +17,9 @@ pub mod models;
 pub mod version;
 
 // Re-exports for convenience
-pub use branding::{branding, init_branding, is_white_label, platform_name, platform_short, BrandingConfig};
+pub use branding::{
+    branding, init_branding, is_white_label, platform_name, platform_short, BrandingConfig,
+};
 pub use error::{BotError, BotResult};
 pub use message_types::MessageType;
 pub use models::{ApiResponse, BotResponse, Session, Suggestion, UserMessage};

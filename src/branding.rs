@@ -17,10 +17,10 @@ const DEFAULT_PLATFORM_NAME: &str = "General Bots";
 const DEFAULT_PLATFORM_SHORT: &str = "GB";
 const DEFAULT_PLATFORM_DOMAIN: &str = "generalbots.com";
 
-/// Branding configuration loaded from .product file
+/// Branding configuration loaded from `.product` file
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BrandingConfig {
-    /// Platform name (e.g., "MyCustomPlatform")
+    /// Platform name (e.g., "`MyCustomPlatform`")
     pub name: String,
     /// Short name for logs and compact displays (e.g., "MCP")
     pub short_name: String,
@@ -82,6 +82,7 @@ impl Default for BrandingConfig {
 
 impl BrandingConfig {
     /// Load branding from .product file if it exists
+    #[must_use]
     pub fn load() -> Self {
         let search_paths = [
             ".product",
@@ -92,7 +93,7 @@ impl BrandingConfig {
 
         for path in &search_paths {
             if let Ok(config) = Self::load_from_file(path) {
-                info!("Loaded white-label branding from {}: {}", path, config.name);
+                info!("Loaded white-label branding from {path}: {}", config.name);
                 return config;
             }
         }
@@ -101,8 +102,8 @@ impl BrandingConfig {
         if let Ok(product_file) = std::env::var("PRODUCT_FILE") {
             if let Ok(config) = Self::load_from_file(&product_file) {
                 info!(
-                    "Loaded white-label branding from PRODUCT_FILE={}: {}",
-                    product_file, config.name
+                    "Loaded white-label branding from PRODUCT_FILE={product_file}: {}",
+                    config.name
                 );
                 return config;
             }
@@ -149,8 +150,10 @@ impl BrandingConfig {
         }
 
         // Try parsing as simple key=value format
-        let mut config = Self::default();
-        config.is_white_label = true;
+        let mut config = Self {
+            is_white_label: true,
+            ..Self::default()
+        };
 
         for line in content.lines() {
             let line = line.trim();
@@ -261,26 +264,31 @@ pub fn init_branding() {
 }
 
 /// Get the current branding configuration
+#[must_use]
 pub fn branding() -> &'static BrandingConfig {
     BRANDING.get_or_init(BrandingConfig::load)
 }
 
 /// Get the platform name
+#[must_use]
 pub fn platform_name() -> &'static str {
     &branding().name
 }
 
 /// Get the short platform name
+#[must_use]
 pub fn platform_short() -> &'static str {
     &branding().short_name
 }
 
 /// Check if this is a white-label deployment
+#[must_use]
 pub fn is_white_label() -> bool {
     branding().is_white_label
 }
 
 /// Get formatted copyright text
+#[must_use]
 pub fn copyright_text() -> String {
     branding().copyright.clone().unwrap_or_else(|| {
         format!(
@@ -292,6 +300,7 @@ pub fn copyright_text() -> String {
 }
 
 /// Get footer text
+#[must_use]
 pub fn footer_text() -> String {
     branding()
         .footer_text
@@ -300,6 +309,7 @@ pub fn footer_text() -> String {
 }
 
 /// Format a log prefix with platform branding
+#[must_use]
 pub fn log_prefix() -> String {
     format!("[{}]", platform_short())
 }

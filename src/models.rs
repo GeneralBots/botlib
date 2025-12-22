@@ -1,3 +1,5 @@
+//! API models for bot communication.
+
 use crate::message_types::MessageType;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -17,7 +19,8 @@ pub struct ApiResponse<T> {
 }
 
 impl<T> ApiResponse<T> {
-    pub fn success(data: T) -> Self {
+    #[must_use]
+    pub const fn success(data: T) -> Self {
         Self {
             success: true,
             data: Some(data),
@@ -27,6 +30,7 @@ impl<T> ApiResponse<T> {
         }
     }
 
+    #[must_use]
     pub fn success_with_message(data: T, message: impl Into<String>) -> Self {
         Self {
             success: true,
@@ -37,6 +41,7 @@ impl<T> ApiResponse<T> {
         }
     }
 
+    #[must_use]
     pub fn error(message: impl Into<String>) -> Self {
         Self {
             success: false,
@@ -47,6 +52,7 @@ impl<T> ApiResponse<T> {
         }
     }
 
+    #[must_use]
     pub fn error_with_code(message: impl Into<String>, code: impl Into<String>) -> Self {
         Self {
             success: false,
@@ -57,6 +63,7 @@ impl<T> ApiResponse<T> {
         }
     }
 
+    #[must_use]
     pub fn map<U, F: FnOnce(T) -> U>(self, f: F) -> ApiResponse<U> {
         ApiResponse {
             success: self.success,
@@ -67,11 +74,13 @@ impl<T> ApiResponse<T> {
         }
     }
 
-    pub fn is_success(&self) -> bool {
+    #[must_use]
+    pub const fn is_success(&self) -> bool {
         self.success
     }
 
-    pub fn is_error(&self) -> bool {
+    #[must_use]
+    pub const fn is_error(&self) -> bool {
         !self.success
     }
 }
@@ -95,6 +104,7 @@ pub struct Session {
 }
 
 impl Session {
+    #[must_use]
     pub fn new(user_id: Uuid, bot_id: Uuid, title: impl Into<String>) -> Self {
         let now = Utc::now();
         Self {
@@ -108,19 +118,23 @@ impl Session {
         }
     }
 
+    #[must_use]
     pub fn with_expiry(mut self, expires_at: DateTime<Utc>) -> Self {
         self.expires_at = Some(expires_at);
         self
     }
 
+    #[must_use]
     pub fn is_expired(&self) -> bool {
-        self.expires_at.map(|exp| Utc::now() > exp).unwrap_or(false)
+        self.expires_at.is_some_and(|exp| Utc::now() > exp)
     }
 
+    #[must_use]
     pub fn is_active(&self) -> bool {
         !self.is_expired()
     }
 
+    #[must_use]
     pub fn remaining_time(&self) -> Option<chrono::Duration> {
         self.expires_at.map(|exp| exp - Utc::now())
     }
@@ -142,6 +156,7 @@ pub struct UserMessage {
 }
 
 impl UserMessage {
+    #[must_use]
     pub fn text(
         bot_id: impl Into<String>,
         user_id: impl Into<String>,
@@ -162,17 +177,20 @@ impl UserMessage {
         }
     }
 
+    #[must_use]
     pub fn with_media(mut self, url: impl Into<String>) -> Self {
         self.media_url = Some(url.into());
         self
     }
 
+    #[must_use]
     pub fn with_context(mut self, context: impl Into<String>) -> Self {
         self.context_name = Some(context.into());
         self
     }
 
-    pub fn has_media(&self) -> bool {
+    #[must_use]
+    pub const fn has_media(&self) -> bool {
         self.media_url.is_some()
     }
 }
@@ -189,6 +207,7 @@ pub struct Suggestion {
 }
 
 impl Suggestion {
+    #[must_use]
     pub fn new(text: impl Into<String>) -> Self {
         Self {
             text: text.into(),
@@ -198,16 +217,19 @@ impl Suggestion {
         }
     }
 
+    #[must_use]
     pub fn with_context(mut self, context: impl Into<String>) -> Self {
         self.context = Some(context.into());
         self
     }
 
+    #[must_use]
     pub fn with_action(mut self, action: impl Into<String>) -> Self {
         self.action = Some(action.into());
         self
     }
 
+    #[must_use]
     pub fn with_icon(mut self, icon: impl Into<String>) -> Self {
         self.icon = Some(icon.into());
         self
@@ -242,6 +264,7 @@ pub struct BotResponse {
 }
 
 impl BotResponse {
+    #[must_use]
     pub fn new(
         bot_id: impl Into<String>,
         session_id: impl Into<String>,
@@ -265,6 +288,7 @@ impl BotResponse {
         }
     }
 
+    #[must_use]
     pub fn streaming(
         bot_id: impl Into<String>,
         session_id: impl Into<String>,
@@ -288,6 +312,7 @@ impl BotResponse {
         }
     }
 
+    #[must_use]
     pub fn with_suggestions<I, S>(mut self, suggestions: I) -> Self
     where
         I: IntoIterator<Item = S>,
@@ -297,11 +322,13 @@ impl BotResponse {
         self
     }
 
+    #[must_use]
     pub fn add_suggestion(mut self, suggestion: impl Into<Suggestion>) -> Self {
         self.suggestions.push(suggestion.into());
         self
     }
 
+    #[must_use]
     pub fn with_context(
         mut self,
         name: impl Into<String>,
@@ -318,15 +345,18 @@ impl BotResponse {
         self.content.push_str(chunk);
     }
 
+    #[must_use]
     pub fn complete(mut self) -> Self {
         self.is_complete = true;
         self
     }
 
-    pub fn is_streaming(&self) -> bool {
+    #[must_use]
+    pub const fn is_streaming(&self) -> bool {
         self.stream_token.is_some() && !self.is_complete
     }
 
+    #[must_use]
     pub fn has_suggestions(&self) -> bool {
         !self.suggestions.is_empty()
     }
@@ -376,6 +406,7 @@ pub enum AttachmentType {
 }
 
 impl Attachment {
+    #[must_use]
     pub fn new(attachment_type: AttachmentType, url: impl Into<String>) -> Self {
         Self {
             attachment_type,
@@ -387,51 +418,62 @@ impl Attachment {
         }
     }
 
+    #[must_use]
     pub fn image(url: impl Into<String>) -> Self {
         Self::new(AttachmentType::Image, url)
     }
 
+    #[must_use]
     pub fn audio(url: impl Into<String>) -> Self {
         Self::new(AttachmentType::Audio, url)
     }
 
+    #[must_use]
     pub fn video(url: impl Into<String>) -> Self {
         Self::new(AttachmentType::Video, url)
     }
 
+    #[must_use]
     pub fn document(url: impl Into<String>) -> Self {
         Self::new(AttachmentType::Document, url)
     }
 
+    #[must_use]
     pub fn file(url: impl Into<String>) -> Self {
         Self::new(AttachmentType::File, url)
     }
 
+    #[must_use]
     pub fn with_mime_type(mut self, mime_type: impl Into<String>) -> Self {
         self.mime_type = Some(mime_type.into());
         self
     }
 
+    #[must_use]
     pub fn with_filename(mut self, filename: impl Into<String>) -> Self {
         self.filename = Some(filename.into());
         self
     }
 
-    pub fn with_size(mut self, size: u64) -> Self {
+    #[must_use]
+    pub const fn with_size(mut self, size: u64) -> Self {
         self.size = Some(size);
         self
     }
 
+    #[must_use]
     pub fn with_thumbnail(mut self, thumbnail_url: impl Into<String>) -> Self {
         self.thumbnail_url = Some(thumbnail_url.into());
         self
     }
 
-    pub fn is_image(&self) -> bool {
-        self.attachment_type == AttachmentType::Image
+    #[must_use]
+    pub const fn is_image(&self) -> bool {
+        matches!(self.attachment_type, AttachmentType::Image)
     }
 
-    pub fn is_media(&self) -> bool {
+    #[must_use]
+    pub const fn is_media(&self) -> bool {
         matches!(
             self.attachment_type,
             AttachmentType::Image | AttachmentType::Audio | AttachmentType::Video

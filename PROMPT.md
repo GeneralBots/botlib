@@ -5,135 +5,137 @@
 
 ---
 
-## Version Management - CRITICAL
+## ZERO TOLERANCE POLICY
 
-**Current version is 6.1.0 - DO NOT CHANGE without explicit approval!**
+**This project has the strictest code quality requirements possible.**
 
-### Rules
-
-1. **Version is 6.1.0 across ALL workspace crates**
-2. **NEVER change version without explicit user approval**
-3. **All workspace crates share version 6.1.0**
-4. **BotLib does not have migrations - all migrations are in botserver/**
+**EVERY SINGLE WARNING MUST BE FIXED. NO EXCEPTIONS.**
 
 ---
 
-## Official Icons - Reference
+## ABSOLUTE PROHIBITIONS
 
-**BotLib does not contain icons.** Icons are managed in:
-- `botui/ui/suite/assets/icons/` - Runtime UI icons
-- `botbook/src/assets/icons/` - Documentation icons
-
-When documenting or referencing UI elements in BotLib:
-- Reference icons by name (e.g., `gb-chat.svg`, `gb-drive.svg`)
-- Never generate or embed icon content
-- See `botui/PROMPT.md` for the complete icon list
+```
+❌ NEVER use #![allow()] or #[allow()] in source code to silence warnings
+❌ NEVER use _ prefix for unused variables - DELETE the variable or USE it
+❌ NEVER use .unwrap() - use ? or proper error handling
+❌ NEVER use .expect() - use ? or proper error handling  
+❌ NEVER use panic!() or unreachable!() - handle all cases
+❌ NEVER use todo!() or unimplemented!() - write real code
+❌ NEVER leave unused imports - DELETE them
+❌ NEVER leave dead code - DELETE it or IMPLEMENT it
+❌ NEVER use approximate constants (3.14159) - use std::f64::consts::PI
+❌ NEVER silence clippy in code - FIX THE CODE or configure in Cargo.toml
+❌ NEVER add comments explaining what code does - code must be self-documenting
+```
 
 ---
 
-## Weekly Maintenance - EVERY MONDAY
+## CARGO.TOML LINT EXCEPTIONS
 
-### Package Review Checklist
+When a clippy lint has **technical false positives** that cannot be fixed in code,
+disable it in `Cargo.toml` with a comment explaining why:
 
-**Every Monday, review the following:**
+```toml
+[lints.clippy]
+# Disabled: has false positives for functions with mut self, heap types (Vec, String)
+missing_const_for_fn = "allow"
+# Disabled: Tauri commands require owned types (Window) that cannot be passed by reference
+needless_pass_by_value = "allow"
+# Disabled: transitive dependencies we cannot control
+multiple_crate_versions = "allow"
+```
 
-1. **Dependency Updates**
-   ```bash
-   cargo outdated
-   cargo audit
-   ```
+**Approved exceptions:**
+- `missing_const_for_fn` - false positives for `mut self`, heap types
+- `needless_pass_by_value` - Tauri/framework requirements
+- `multiple_crate_versions` - transitive dependencies
+- `future_not_send` - when async traits require non-Send futures
 
-2. **Package Consolidation Opportunities**
-   - Check if new crates can replace custom code
-   - Look for crates that combine multiple dependencies
-   - Review `Cargo.toml` for redundant dependencies
+---
 
-3. **Code Reduction Candidates**
-   - Custom implementations that now have crate equivalents
-   - Boilerplate that can be replaced with derive macros
-   - Re-exports that can simplify downstream usage
+## MANDATORY CODE PATTERNS
 
-4. **Feature Flag Review**
-   - Check if optional features are still needed
-   - Consolidate similar features
-   - Remove unused feature gates
+### Error Handling - Use `?` Operator
 
-### Packages to Watch
+```rust
+// ❌ WRONG
+let value = something.unwrap();
+let value = something.expect("msg");
 
-| Area | Potential Packages | Purpose |
-|------|-------------------|---------|
-| Error Handling | `anyhow`, `thiserror` | Consolidate error types |
-| Validation | `validator` | Replace manual validation |
-| Serialization | `serde` derives | Reduce boilerplate |
-| UUID | `uuid` | Consistent ID generation |
+// ✅ CORRECT
+let value = something?;
+let value = something.ok_or_else(|| Error::NotFound)?;
+```
+
+### Self Usage in Impl Blocks
+
+```rust
+// ❌ WRONG
+impl MyStruct {
+    fn new() -> MyStruct { MyStruct { } }
+}
+
+// ✅ CORRECT
+impl MyStruct {
+    fn new() -> Self { Self { } }
+}
+```
+
+### Format Strings - Inline Variables
+
+```rust
+// ❌ WRONG
+format!("Hello {}", name)
+
+// ✅ CORRECT
+format!("Hello {name}")
+```
+
+### Display vs ToString
+
+```rust
+// ❌ WRONG
+impl ToString for MyType { }
+
+// ✅ CORRECT
+impl std::fmt::Display for MyType { }
+```
+
+### Derive Eq with PartialEq
+
+```rust
+// ❌ WRONG
+#[derive(PartialEq)]
+struct MyStruct { }
+
+// ✅ CORRECT
+#[derive(PartialEq, Eq)]
+struct MyStruct { }
+```
+
+---
+
+## Version Management
+
+**Version is 6.1.0 - NEVER CHANGE without explicit approval**
 
 ---
 
 ## Project Overview
 
-BotLib is the shared foundation library for the General Bots workspace. It provides common types, utilities, error handling, and optional integrations that are consumed by botserver, botui, and botapp.
-
-### Workspace Position
+BotLib is the shared foundation library for the General Bots workspace.
 
 ```
 botlib/        # THIS PROJECT - Shared library
 botserver/     # Main server (depends on botlib)
 botui/         # Web/Desktop UI (depends on botlib)
 botapp/        # Desktop app (depends on botlib)
-botbook/       # Documentation
-```
-
-### What BotLib Provides
-
-- **Error Types**: Common error handling with anyhow/thiserror
-- **Models**: Shared data structures and types
-- **HTTP Client**: Optional reqwest wrapper
-- **Database**: Optional diesel integration
-- **Validation**: Optional input validation
-- **Branding**: Version and branding constants
-
----
-
-## Feature Flags
-
-```toml
-[features]
-default = []
-full = ["database", "http-client", "validation"]
-database = ["dep:diesel"]
-http-client = ["dep:reqwest"]
-validation = ["dep:validator"]
-```
-
-### Usage in Dependent Crates
-
-```toml
-# botserver/Cargo.toml
-[dependencies.botlib]
-path = "../botlib"
-features = ["database"]
-
-# botui/Cargo.toml
-[dependencies.botlib]
-path = "../botlib"
-features = ["http-client"]
 ```
 
 ---
 
-## Code Generation Rules
-
-### CRITICAL REQUIREMENTS
-
-```
-- Library code must be generic and reusable
-- No hardcoded values or project-specific logic
-- All public APIs must be well-documented
-- Feature gates for optional dependencies
-- Zero warnings - clean compilation required
-```
-
-### Module Structure
+## Module Structure
 
 ```
 src/
@@ -148,153 +150,31 @@ src/
 
 ---
 
-## Adding New Features
-
-### Adding a Shared Type
-
-```rust
-// src/models.rs
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
-use uuid::Uuid;
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SharedEntity {
-    pub id: Uuid,
-    pub name: String,
-    pub created_at: DateTime<Utc>,
-}
-```
-
-### Adding a Feature-Gated Module
-
-```rust
-// src/lib.rs
-#[cfg(feature = "my-feature")]
-pub mod my_module;
-
-#[cfg(feature = "my-feature")]
-pub use my_module::MyType;
-```
-
-```toml
-# Cargo.toml
-[features]
-my-feature = ["dep:some-crate"]
-
-[dependencies]
-some-crate = { version = "1.0", optional = true }
-```
-
-### Adding Error Types
-
-```rust
-// src/error.rs
-use thiserror::Error;
-
-#[derive(Error, Debug)]
-pub enum BotLibError {
-    #[error("Configuration error: {0}")]
-    Config(String),
-    
-    #[error("HTTP error: {0}")]
-    Http(#[from] reqwest::Error),
-    
-    #[error("Database error: {0}")]
-    Database(String),
-}
-
-pub type Result<T> = std::result::Result<T, BotLibError>;
-```
-
----
-
-## Re-exports Strategy
-
-BotLib should re-export common dependencies to ensure version consistency:
-
-```rust
-// src/lib.rs
-pub use anyhow;
-pub use chrono;
-pub use serde;
-pub use serde_json;
-pub use thiserror;
-pub use uuid;
-
-#[cfg(feature = "database")]
-pub use diesel;
-
-#[cfg(feature = "http-client")]
-pub use reqwest;
-```
-
-Consumers then use:
-
-```rust
-use botlib::uuid::Uuid;
-use botlib::chrono::Utc;
-```
-
----
-
 ## Dependencies
 
-| Library | Version | Purpose | Optional |
-|---------|---------|---------|----------|
-| anyhow | 1.0 | Error handling | No |
-| thiserror | 2.0 | Error derive | No |
-| log | 0.4 | Logging facade | No |
-| chrono | 0.4 | Date/time | No |
-| serde | 1.0 | Serialization | No |
-| serde_json | 1.0 | JSON | No |
-| uuid | 1.11 | UUIDs | No |
-| toml | 0.8 | Config parsing | No |
-| diesel | 2.1 | Database ORM | Yes |
-| reqwest | 0.12 | HTTP client | Yes |
-| validator | 0.18 | Validation | Yes |
+| Library | Version | Purpose |
+|---------|---------|---------|
+| anyhow | 1.0 | Error handling |
+| thiserror | 2.0 | Error derive |
+| chrono | 0.4 | Date/time |
+| serde | 1.0 | Serialization |
+| uuid | 1.11 | UUIDs |
+| diesel | 2.1 | Database ORM |
+| reqwest | 0.12 | HTTP client |
 
 ---
 
-## Testing
+## Remember
 
-```bash
-# Test all features
-cargo test --all-features
-
-# Test specific feature
-cargo test --features database
-
-# Test without optional features
-cargo test
-```
-
----
-
-## Final Checks Before Commit
-
-```bash
-# Verify version is 6.1.0
-grep "^version" Cargo.toml | grep "6.1.0"
-
-# Build with all features
-cargo build --all-features
-
-# Check for warnings
-cargo check --all-features 2>&1 | grep warning
-
-# Run tests
-cargo test --all-features
-```
-
----
-
-## Rules
-
-- Keep botlib minimal and focused
-- No business logic - only utilities and types
-- Feature gate all optional dependencies
-- Maintain backward compatibility
-- Document all public APIs
-- Target zero warnings
+- **ZERO WARNINGS** - Every clippy warning must be fixed
+- **NO ALLOW IN CODE** - Never use #[allow()] in source files
+- **CARGO.TOML EXCEPTIONS OK** - Disable lints with false positives in Cargo.toml with comment
+- **NO DEAD CODE** - Delete unused code, never prefix with _
+- **NO UNWRAP/EXPECT** - Use ? operator or proper error handling
+- **INLINE FORMAT ARGS** - format!("{name}") not format!("{}", name)
+- **USE SELF** - In impl blocks, use Self not the type name
+- **DERIVE EQ** - Always derive Eq with PartialEq
+- **DISPLAY NOT TOSTRING** - Implement Display, not ToString
+- **USE DIAGNOSTICS** - Use IDE diagnostics tool, never call cargo clippy directly
 - **Version**: Always 6.1.0 - do not change without approval
+- **Session Continuation**: When running out of context, create detailed summary: (1) what was done, (2) what remains, (3) specific files and line numbers, (4) exact next steps.
