@@ -1,6 +1,3 @@
-//! Version Tracking Module
-//!
-//! Tracks versions of all components and checks for updates.
 
 use chrono::{DateTime, Utc};
 use log::debug;
@@ -8,35 +5,23 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::RwLock;
 
-/// Global version registry
 static VERSION_REGISTRY: RwLock<Option<VersionRegistry>> = RwLock::new(None);
 
-/// Current botserver version from Cargo.toml
 pub const BOTSERVER_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const BOTSERVER_NAME: &str = env!("CARGO_PKG_NAME");
 
-/// Component version information
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ComponentVersion {
-    /// Component name
     pub name: String,
-    /// Current installed version
     pub version: String,
-    /// Latest available version (if known)
     pub latest_version: Option<String>,
-    /// Whether an update is available
     pub update_available: bool,
-    /// Component status
     pub status: ComponentStatus,
-    /// Last check time
     pub last_checked: Option<DateTime<Utc>>,
-    /// Source/origin of the component
     pub source: ComponentSource,
-    /// Additional metadata
     pub metadata: HashMap<String, String>,
 }
 
-/// Component status
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ComponentStatus {
     Running,
@@ -60,7 +45,6 @@ impl std::fmt::Display for ComponentStatus {
     }
 }
 
-/// Component source type
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ComponentSource {
     Builtin,
@@ -84,7 +68,6 @@ impl std::fmt::Display for ComponentSource {
     }
 }
 
-/// Version registry holding all component versions
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VersionRegistry {
     pub core_version: String,
@@ -105,7 +88,6 @@ impl Default for VersionRegistry {
 }
 
 impl VersionRegistry {
-    /// Create a new version registry
     #[must_use]
     pub fn new() -> Self {
         let mut registry = Self::default();
@@ -113,7 +95,6 @@ impl VersionRegistry {
         registry
     }
 
-    /// Register built-in components
     fn register_builtin_components(&mut self) {
         self.register_component(ComponentVersion {
             name: "botserver".to_string(),
@@ -161,7 +142,6 @@ impl VersionRegistry {
         });
     }
 
-    /// Register a component
     pub fn register_component(&mut self, component: ComponentVersion) {
         debug!(
             "Registered component: {} v{}",
@@ -170,14 +150,12 @@ impl VersionRegistry {
         self.components.insert(component.name.clone(), component);
     }
 
-    /// Update component status
     pub fn update_status(&mut self, name: &str, status: ComponentStatus) {
         if let Some(component) = self.components.get_mut(name) {
             component.status = status;
         }
     }
 
-    /// Update component version
     pub fn update_version(&mut self, name: &str, version: String) {
         if let Some(component) = self.components.get_mut(name) {
             component.version = version;
@@ -185,19 +163,16 @@ impl VersionRegistry {
         }
     }
 
-    /// Get component by name
     #[must_use]
     pub fn get_component(&self, name: &str) -> Option<&ComponentVersion> {
         self.components.get(name)
     }
 
-    /// Get all components
     #[must_use]
     pub const fn get_all_components(&self) -> &HashMap<String, ComponentVersion> {
         &self.components
     }
 
-    /// Get components with available updates
     #[must_use]
     pub fn get_available_updates(&self) -> Vec<&ComponentVersion> {
         self.components
@@ -206,7 +181,6 @@ impl VersionRegistry {
             .collect()
     }
 
-    /// Get summary of all components
     #[must_use]
     pub fn summary(&self) -> String {
         let running = self
@@ -223,19 +197,14 @@ impl VersionRegistry {
         )
     }
 
-    /// Get summary as JSON
-    ///
     /// # Errors
-    ///
-    /// Returns an error if JSON serialization fails.
+    /// Returns `serde_json::Error` if serialization fails.
     pub fn to_json(&self) -> Result<String, serde_json::Error> {
         serde_json::to_string_pretty(self)
     }
 }
 
-// Global Access Functions
 
-/// Initialize version registry at startup
 pub fn init_version_registry() {
     let registry = VersionRegistry::new();
     if let Ok(mut guard) = VERSION_REGISTRY.write() {
@@ -243,19 +212,16 @@ pub fn init_version_registry() {
     }
 }
 
-/// Get version registry (read-only)
 #[must_use]
 pub fn version_registry() -> Option<VersionRegistry> {
     VERSION_REGISTRY.read().ok()?.clone()
 }
 
-/// Get mutable version registry
 pub fn version_registry_mut(
 ) -> Option<std::sync::RwLockWriteGuard<'static, Option<VersionRegistry>>> {
     VERSION_REGISTRY.write().ok()
 }
 
-/// Register a component
 pub fn register_component(component: ComponentVersion) {
     if let Ok(mut guard) = VERSION_REGISTRY.write() {
         if let Some(ref mut registry) = *guard {
@@ -264,7 +230,6 @@ pub fn register_component(component: ComponentVersion) {
     }
 }
 
-/// Update component status
 pub fn update_component_status(name: &str, status: ComponentStatus) {
     if let Ok(mut guard) = VERSION_REGISTRY.write() {
         if let Some(ref mut registry) = *guard {
@@ -273,7 +238,6 @@ pub fn update_component_status(name: &str, status: ComponentStatus) {
     }
 }
 
-/// Get component version
 #[must_use]
 pub fn get_component_version(name: &str) -> Option<ComponentVersion> {
     VERSION_REGISTRY
@@ -284,13 +248,11 @@ pub fn get_component_version(name: &str) -> Option<ComponentVersion> {
         .cloned()
 }
 
-/// Get botserver version
 #[must_use]
 pub const fn get_botserver_version() -> &'static str {
     BOTSERVER_VERSION
 }
 
-/// Get version string for display
 #[must_use]
 pub fn version_string() -> String {
     format!("{BOTSERVER_NAME} v{BOTSERVER_VERSION}")

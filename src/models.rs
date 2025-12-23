@@ -1,4 +1,3 @@
-//! API models for bot communication.
 
 use crate::message_types::MessageType;
 use chrono::{DateTime, Utc};
@@ -119,7 +118,7 @@ impl Session {
     }
 
     #[must_use]
-    pub fn with_expiry(mut self, expires_at: DateTime<Utc>) -> Self {
+    pub const fn with_expiry(mut self, expires_at: DateTime<Utc>) -> Self {
         self.expires_at = Some(expires_at);
         self
     }
@@ -346,7 +345,7 @@ impl BotResponse {
     }
 
     #[must_use]
-    pub fn complete(mut self) -> Self {
+    pub const fn complete(mut self) -> Self {
         self.is_complete = true;
         self
     }
@@ -357,7 +356,7 @@ impl BotResponse {
     }
 
     #[must_use]
-    pub fn has_suggestions(&self) -> bool {
+    pub const fn has_suggestions(&self) -> bool {
         !self.suggestions.is_empty()
     }
 }

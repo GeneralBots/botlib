@@ -1,31 +1,21 @@
-//! Message type definitions
-//!
-//! Defines the different types of messages in the bot system.
 
 use serde::{Deserialize, Serialize};
 
-/// Enum representing different types of messages in the bot system
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct MessageType(pub i32);
 
 impl MessageType {
-    /// Regular message from external systems (`WhatsApp`, Instagram, etc.)
     pub const EXTERNAL: Self = Self(0);
 
-    /// User message from web interface
     pub const USER: Self = Self(1);
 
-    /// Bot response (can be regular content or event)
     pub const BOT_RESPONSE: Self = Self(2);
 
-    /// Continue interrupted response
     pub const CONTINUE: Self = Self(3);
 
-    /// Suggestion or command message
     pub const SUGGESTION: Self = Self(4);
 
-    /// Context change notification
     pub const CONTEXT_CHANGE: Self = Self(5);
 }
 

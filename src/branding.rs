@@ -1,56 +1,32 @@
-//! White-Label Branding Module
-//!
-//! Allows complete customization of platform identity.
-//! When a .product file exists with name=MyCustomPlatform,
-//! "General Bots" never appears in logs, display, messages, footer - nothing.
 
 use log::info;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::sync::OnceLock;
 
-/// Global branding configuration - loaded once at startup
 static BRANDING: OnceLock<BrandingConfig> = OnceLock::new();
 
-/// Default platform name
 const DEFAULT_PLATFORM_NAME: &str = "General Bots";
 const DEFAULT_PLATFORM_SHORT: &str = "GB";
 const DEFAULT_PLATFORM_DOMAIN: &str = "generalbots.com";
 
-/// Branding configuration loaded from `.product` file
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BrandingConfig {
-    /// Platform name (e.g., "`MyCustomPlatform`")
     pub name: String,
-    /// Short name for logs and compact displays (e.g., "MCP")
     pub short_name: String,
-    /// Company/organization name
     pub company: Option<String>,
-    /// Domain for URLs and emails
     pub domain: Option<String>,
-    /// Support email
     pub support_email: Option<String>,
-    /// Logo URL (for web UI)
     pub logo_url: Option<String>,
-    /// Favicon URL
     pub favicon_url: Option<String>,
-    /// Primary color (hex)
     pub primary_color: Option<String>,
-    /// Secondary color (hex)
     pub secondary_color: Option<String>,
-    /// Footer text
     pub footer_text: Option<String>,
-    /// Copyright text
     pub copyright: Option<String>,
-    /// Custom CSS URL
     pub custom_css: Option<String>,
-    /// Terms of service URL
     pub terms_url: Option<String>,
-    /// Privacy policy URL
     pub privacy_url: Option<String>,
-    /// Documentation URL
     pub docs_url: Option<String>,
-    /// Whether this is a white-label deployment
     pub is_white_label: bool,
 }
 
@@ -81,7 +57,6 @@ impl Default for BrandingConfig {
 }
 
 impl BrandingConfig {
-    /// Load branding from .product file if it exists
     #[must_use]
     pub fn load() -> Self {
         let search_paths = [
@@ -98,7 +73,6 @@ impl BrandingConfig {
             }
         }
 
-        // Check environment variable
         if let Ok(product_file) = std::env::var("PRODUCT_FILE") {
             if let Ok(config) = Self::load_from_file(&product_file) {
                 info!(
@@ -109,7 +83,6 @@ impl BrandingConfig {
             }
         }
 
-        // Check for individual environment overrides
         let mut config = Self::default();
 
         if let Ok(name) = std::env::var("PLATFORM_NAME") {
@@ -135,7 +108,6 @@ impl BrandingConfig {
         config
     }
 
-    /// Load from a specific file path
     fn load_from_file(path: &str) -> Result<Self, Box<dyn std::error::Error>> {
         let path = Path::new(path);
         if !path.exists() {
@@ -144,12 +116,10 @@ impl BrandingConfig {
 
         let content = std::fs::read_to_string(path)?;
 
-        // Try parsing as TOML first
         if let Ok(config) = toml::from_str::<ProductFile>(&content) {
             return Ok(config.into());
         }
 
-        // Try parsing as simple key=value format
         let mut config = Self {
             is_white_label: true,
             ..Self::default()
@@ -190,7 +160,6 @@ impl BrandingConfig {
     }
 }
 
-/// TOML format for .product file
 #[derive(Debug, Deserialize)]
 struct ProductFile {
     name: String,
@@ -255,39 +224,32 @@ impl From<ProductFile> for BrandingConfig {
     }
 }
 
-// Global Access Functions
 
-/// Initialize branding at application startup
 pub fn init_branding() {
     let config = BrandingConfig::load();
     let _ = BRANDING.set(config);
 }
 
-/// Get the current branding configuration
 #[must_use]
 pub fn branding() -> &'static BrandingConfig {
     BRANDING.get_or_init(BrandingConfig::load)
 }
 
-/// Get the platform name
 #[must_use]
 pub fn platform_name() -> &'static str {
     &branding().name
 }
 
-/// Get the short platform name
 #[must_use]
 pub fn platform_short() -> &'static str {
     &branding().short_name
 }
 
-/// Check if this is a white-label deployment
 #[must_use]
 pub fn is_white_label() -> bool {
     branding().is_white_label
 }
 
-/// Get formatted copyright text
 #[must_use]
 pub fn copyright_text() -> String {
     branding().copyright.clone().unwrap_or_else(|| {
@@ -299,7 +261,6 @@ pub fn copyright_text() -> String {
     })
 }
 
-/// Get footer text
 #[must_use]
 pub fn footer_text() -> String {
     branding()
@@ -308,7 +269,6 @@ pub fn footer_text() -> String {
         .unwrap_or_else(|| format!("Powered by {}", platform_name()))
 }
 
-/// Format a log prefix with platform branding
 #[must_use]
 pub fn log_prefix() -> String {
     format!("[{}]", platform_short())

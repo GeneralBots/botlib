@@ -1,4 +1,3 @@
-//! HTTP client for botserver communication.
 
 use crate::error::BotError;
 use log::{debug, error};
@@ -9,7 +8,6 @@ use std::time::Duration;
 const DEFAULT_BOTSERVER_URL: &str = "https://localhost:8088";
 const DEFAULT_TIMEOUT_SECS: u64 = 30;
 
-/// HTTP client for communicating with the botserver.
 #[derive(Clone)]
 pub struct BotServerClient {
     client: Arc<reqwest::Client>,
@@ -17,19 +15,11 @@ pub struct BotServerClient {
 }
 
 impl BotServerClient {
-    /// Creates a new client with an optional base URL.
-    ///
-    /// Uses `BOTSERVER_URL` environment variable if no URL is provided,
-    /// or falls back to the default localhost URL.
     #[must_use]
     pub fn new(base_url: Option<String>) -> Self {
         Self::with_timeout(base_url, Duration::from_secs(DEFAULT_TIMEOUT_SECS))
     }
 
-    /// Creates a new client with a custom timeout.
-    ///
-    /// Uses `BOTSERVER_URL` environment variable if no URL is provided,
-    /// or falls back to the default localhost URL.
     #[must_use]
     pub fn with_timeout(base_url: Option<String>, timeout: Duration) -> Self {
         let url = base_url.unwrap_or_else(|| {
@@ -49,17 +39,13 @@ impl BotServerClient {
         }
     }
 
-    /// Returns the base URL of the client.
     #[must_use]
     pub fn base_url(&self) -> &str {
         &self.base_url
     }
 
-    /// Performs a GET request to the specified endpoint.
-    ///
     /// # Errors
-    ///
-    /// Returns an error if the request fails or the response cannot be parsed.
+    /// Returns `BotError` if the HTTP request fails or response parsing fails.
     pub async fn get<T: DeserializeOwned>(&self, endpoint: &str) -> Result<T, BotError> {
         let url = format!("{}{endpoint}", self.base_url);
         debug!("GET {url}");
@@ -68,11 +54,8 @@ impl BotServerClient {
         self.handle_response(response).await
     }
 
-    /// Performs a POST request with a JSON body.
-    ///
     /// # Errors
-    ///
-    /// Returns an error if the request fails or the response cannot be parsed.
+    /// Returns `BotError` if the HTTP request fails or response parsing fails.
     pub async fn post<T: Serialize + Send + Sync, R: DeserializeOwned>(
         &self,
         endpoint: &str,
@@ -85,11 +68,8 @@ impl BotServerClient {
         self.handle_response(response).await
     }
 
-    /// Performs a PUT request with a JSON body.
-    ///
     /// # Errors
-    ///
-    /// Returns an error if the request fails or the response cannot be parsed.
+    /// Returns `BotError` if the HTTP request fails or response parsing fails.
     pub async fn put<T: Serialize + Send + Sync, R: DeserializeOwned>(
         &self,
         endpoint: &str,
@@ -102,11 +82,8 @@ impl BotServerClient {
         self.handle_response(response).await
     }
 
-    /// Performs a PATCH request with a JSON body.
-    ///
     /// # Errors
-    ///
-    /// Returns an error if the request fails or the response cannot be parsed.
+    /// Returns `BotError` if the HTTP request fails or response parsing fails.
     pub async fn patch<T: Serialize + Send + Sync, R: DeserializeOwned>(
         &self,
         endpoint: &str,
@@ -119,11 +96,8 @@ impl BotServerClient {
         self.handle_response(response).await
     }
 
-    /// Performs a DELETE request to the specified endpoint.
-    ///
     /// # Errors
-    ///
-    /// Returns an error if the request fails or the response cannot be parsed.
+    /// Returns `BotError` if the HTTP request fails or response parsing fails.
     pub async fn delete<T: DeserializeOwned>(&self, endpoint: &str) -> Result<T, BotError> {
         let url = format!("{}{endpoint}", self.base_url);
         debug!("DELETE {url}");
@@ -132,11 +106,8 @@ impl BotServerClient {
         self.handle_response(response).await
     }
 
-    /// Performs an authorized GET request with a bearer token.
-    ///
     /// # Errors
-    ///
-    /// Returns an error if the request fails or the response cannot be parsed.
+    /// Returns `BotError` if the HTTP request fails or response parsing fails.
     pub async fn get_authorized<T: DeserializeOwned>(
         &self,
         endpoint: &str,
@@ -149,11 +120,8 @@ impl BotServerClient {
         self.handle_response(response).await
     }
 
-    /// Performs an authorized POST request with a bearer token and JSON body.
-    ///
     /// # Errors
-    ///
-    /// Returns an error if the request fails or the response cannot be parsed.
+    /// Returns `BotError` if the HTTP request fails or response parsing fails.
     pub async fn post_authorized<T: Serialize + Send + Sync, R: DeserializeOwned>(
         &self,
         endpoint: &str,
@@ -173,11 +141,8 @@ impl BotServerClient {
         self.handle_response(response).await
     }
 
-    /// Performs an authorized DELETE request with a bearer token.
-    ///
     /// # Errors
-    ///
-    /// Returns an error if the request fails or the response cannot be parsed.
+    /// Returns `BotError` if the HTTP request fails or response parsing fails.
     pub async fn delete_authorized<T: DeserializeOwned>(
         &self,
         endpoint: &str,
@@ -190,9 +155,6 @@ impl BotServerClient {
         self.handle_response(response).await
     }
 
-    /// Performs a health check against the server.
-    ///
-    /// Returns `true` if the server is healthy, `false` otherwise.
     pub async fn health_check(&self) -> bool {
         match self.get::<serde_json::Value>("/health").await {
             Ok(_) => true,
