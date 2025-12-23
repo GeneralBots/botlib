@@ -44,8 +44,8 @@ impl BotServerClient {
         &self.base_url
     }
 
-    /// # Errors
-    /// Returns `BotError` if the HTTP request fails or response parsing fails.
+
+
     pub async fn get<T: DeserializeOwned>(&self, endpoint: &str) -> Result<T, BotError> {
         let url = format!("{}{endpoint}", self.base_url);
         debug!("GET {url}");
@@ -54,8 +54,8 @@ impl BotServerClient {
         self.handle_response(response).await
     }
 
-    /// # Errors
-    /// Returns `BotError` if the HTTP request fails or response parsing fails.
+
+
     pub async fn post<T: Serialize + Send + Sync, R: DeserializeOwned>(
         &self,
         endpoint: &str,
@@ -68,8 +68,8 @@ impl BotServerClient {
         self.handle_response(response).await
     }
 
-    /// # Errors
-    /// Returns `BotError` if the HTTP request fails or response parsing fails.
+
+
     pub async fn put<T: Serialize + Send + Sync, R: DeserializeOwned>(
         &self,
         endpoint: &str,
@@ -82,8 +82,8 @@ impl BotServerClient {
         self.handle_response(response).await
     }
 
-    /// # Errors
-    /// Returns `BotError` if the HTTP request fails or response parsing fails.
+
+
     pub async fn patch<T: Serialize + Send + Sync, R: DeserializeOwned>(
         &self,
         endpoint: &str,
@@ -96,8 +96,8 @@ impl BotServerClient {
         self.handle_response(response).await
     }
 
-    /// # Errors
-    /// Returns `BotError` if the HTTP request fails or response parsing fails.
+
+
     pub async fn delete<T: DeserializeOwned>(&self, endpoint: &str) -> Result<T, BotError> {
         let url = format!("{}{endpoint}", self.base_url);
         debug!("DELETE {url}");
@@ -106,8 +106,8 @@ impl BotServerClient {
         self.handle_response(response).await
     }
 
-    /// # Errors
-    /// Returns `BotError` if the HTTP request fails or response parsing fails.
+
+
     pub async fn get_authorized<T: DeserializeOwned>(
         &self,
         endpoint: &str,
@@ -120,8 +120,8 @@ impl BotServerClient {
         self.handle_response(response).await
     }
 
-    /// # Errors
-    /// Returns `BotError` if the HTTP request fails or response parsing fails.
+
+
     pub async fn post_authorized<T: Serialize + Send + Sync, R: DeserializeOwned>(
         &self,
         endpoint: &str,
@@ -141,8 +141,8 @@ impl BotServerClient {
         self.handle_response(response).await
     }
 
-    /// # Errors
-    /// Returns `BotError` if the HTTP request fails or response parsing fails.
+
+
     pub async fn delete_authorized<T: DeserializeOwned>(
         &self,
         endpoint: &str,

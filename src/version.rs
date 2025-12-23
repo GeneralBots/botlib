@@ -197,8 +197,8 @@ impl VersionRegistry {
         )
     }
 
-    /// # Errors
-    /// Returns `serde_json::Error` if serialization fails.
+
+
     pub fn to_json(&self) -> Result<String, serde_json::Error> {
         serde_json::to_string_pretty(self)
     }
