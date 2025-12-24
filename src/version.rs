@@ -1,4 +1,3 @@
-
 use chrono::{DateTime, Utc};
 use log::debug;
 use serde::{Deserialize, Serialize};
@@ -197,13 +196,14 @@ impl VersionRegistry {
         )
     }
 
-
-
+    /// Serialize the registry to a JSON string.
+    ///
+    /// # Errors
+    /// Returns an error if serialization fails.
     pub fn to_json(&self) -> Result<String, serde_json::Error> {
         serde_json::to_string_pretty(self)
     }
 }
-
 
 pub fn init_version_registry() {
     let registry = VersionRegistry::new();

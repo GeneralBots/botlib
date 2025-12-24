@@ -1,4 +1,3 @@
-
 use crate::error::BotError;
 use log::{debug, error};
 use serde::{de::DeserializeOwned, Serialize};
@@ -44,8 +43,10 @@ impl BotServerClient {
         &self.base_url
     }
 
-
-
+    /// Perform a GET request to the specified endpoint.
+    ///
+    /// # Errors
+    /// Returns an error if the request fails or the response cannot be parsed.
     pub async fn get<T: DeserializeOwned>(&self, endpoint: &str) -> Result<T, BotError> {
         let url = format!("{}{endpoint}", self.base_url);
         debug!("GET {url}");
@@ -54,8 +55,10 @@ impl BotServerClient {
         self.handle_response(response).await
     }
 
-
-
+    /// Perform a POST request to the specified endpoint.
+    ///
+    /// # Errors
+    /// Returns an error if the request fails or the response cannot be parsed.
     pub async fn post<T: Serialize + Send + Sync, R: DeserializeOwned>(
         &self,
         endpoint: &str,
@@ -68,8 +71,10 @@ impl BotServerClient {
         self.handle_response(response).await
     }
 
-
-
+    /// Perform a PUT request to the specified endpoint.
+    ///
+    /// # Errors
+    /// Returns an error if the request fails or the response cannot be parsed.
     pub async fn put<T: Serialize + Send + Sync, R: DeserializeOwned>(
         &self,
         endpoint: &str,
@@ -82,8 +87,10 @@ impl BotServerClient {
         self.handle_response(response).await
     }
 
-
-
+    /// Perform a PATCH request to the specified endpoint.
+    ///
+    /// # Errors
+    /// Returns an error if the request fails or the response cannot be parsed.
     pub async fn patch<T: Serialize + Send + Sync, R: DeserializeOwned>(
         &self,
         endpoint: &str,
@@ -96,8 +103,10 @@ impl BotServerClient {
         self.handle_response(response).await
     }
 
-
-
+    /// Perform a DELETE request to the specified endpoint.
+    ///
+    /// # Errors
+    /// Returns an error if the request fails or the response cannot be parsed.
     pub async fn delete<T: DeserializeOwned>(&self, endpoint: &str) -> Result<T, BotError> {
         let url = format!("{}{endpoint}", self.base_url);
         debug!("DELETE {url}");
@@ -106,8 +115,10 @@ impl BotServerClient {
         self.handle_response(response).await
     }
 
-
-
+    /// Perform an authorized GET request with a bearer token.
+    ///
+    /// # Errors
+    /// Returns an error if the request fails or the response cannot be parsed.
     pub async fn get_authorized<T: DeserializeOwned>(
         &self,
         endpoint: &str,
@@ -120,8 +131,10 @@ impl BotServerClient {
         self.handle_response(response).await
     }
 
-
-
+    /// Perform an authorized POST request with a bearer token.
+    ///
+    /// # Errors
+    /// Returns an error if the request fails or the response cannot be parsed.
     pub async fn post_authorized<T: Serialize + Send + Sync, R: DeserializeOwned>(
         &self,
         endpoint: &str,
@@ -141,8 +154,10 @@ impl BotServerClient {
         self.handle_response(response).await
     }
 
-
-
+    /// Perform an authorized DELETE request with a bearer token.
+    ///
+    /// # Errors
+    /// Returns an error if the request fails or the response cannot be parsed.
     pub async fn delete_authorized<T: DeserializeOwned>(
         &self,
         endpoint: &str,
