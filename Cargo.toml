@@ -11,10 +11,11 @@ categories = ["api-bindings", "web-programming"]
 
 [features]
 default = []
-full = ["database", "http-client", "validation"]
+full = ["database", "http-client", "validation", "resilience"]
 database = ["dep:diesel"]
 http-client = ["dep:reqwest"]
 validation = ["dep:validator"]
+resilience = []
 
 [dependencies]
 # Core
@@ -26,6 +27,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 uuid = { version = "1.11", features = ["serde", "v4"] }
 toml = "0.8"
+tokio = { version = "1.41", features = ["sync", "time"] }
 
 # Optional: Database
 diesel = { version = "2.1", features = ["postgres", "uuid", "chrono", "serde_json", "r2d2"], optional = true }
